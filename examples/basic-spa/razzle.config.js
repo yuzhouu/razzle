@@ -2,6 +2,6 @@
 
 module.exports = {
   options: {
-    buildType: 'spa',
+    buildType: 'single-page-application',
   }
 };

@@ -62,7 +62,7 @@ function getClientEnvironment(target, is_dev, options, paths) {
         // The public dir changes between dev and prod, so we use an environment
         // variable available to users.
         RAZZLE_PUBLIC_DIR:
-          process.env.NODE_ENV === 'production'
+          process.env.NODE_ENV !== 'development'
             ? path.relative(paths.appPath, paths.appBuildPublic)
             : paths.appPublic,
         // Whether or not react-refresh is enabled.
@@ -70,6 +70,7 @@ function getClientEnvironment(target, is_dev, options, paths) {
         // which is why it's disabled by default.
         // It is defined here so it is available in the webpackHotDevClient.
         FAST_REFRESH: options.shouldUseReactRefresh,
+        WEBPACK_VERSION: options.webpackObject.version ? parseInt(options.webpackObject.version[0]) : 3
       }
     );
   // Stringify all values so we can feed into Webpack DefinePlugin

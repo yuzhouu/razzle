@@ -1,6 +1,11 @@
 {
   "name": "razzle-plugin-elm",
-  "version": "4.0.0-canary.37",
+  "version": "4.0.0-canary.50",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com:jaredpalmer/razzle.git",
+    "directory": "packages/razzle-plugin-elm"
+  },
   "main": "index.js",
   "license": "MIT",
   "dependencies": {
@@ -9,6 +14,6 @@
   },
   "peerDependencies": {
     "elm": "^0.19.1-5",
-    "razzle-dev-utils": "4.0.0-canary.37"
+    "razzle-dev-utils": "4.0.0-canary.50"
   }
 }

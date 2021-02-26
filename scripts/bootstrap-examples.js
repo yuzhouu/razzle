@@ -64,6 +64,7 @@ let argv = yargs
       const exampleDirs = exampleNamesMap.map(example =>example[1]);
 
       let extraWorkspaceDirs = [];
+      let extraNoHoist = [];
 
       if (exampleDirs) {
         const missing = exampleDirs
@@ -79,9 +80,11 @@ let argv = yargs
               console.log(`failed to read json ${examplePackageJson}`);
               process.exit(1);
             }
+            const razzle_meta = examplePackageJsonData.razzle_meta||{};
+            extraNoHoist = extraNoHoist.concat((razzle_meta.nohoist||[]).map(nohoist=>`${example}/${nohoist}`))
             extraWorkspaceDirs = extraWorkspaceDirs
               .concat([example])
-              .concat((examplePackageJsonData.razzle || {}).extraWorkspacedirs || []);
+              .concat(razzle_meta.extraWorkspacedirs || []);
             return false;
           })
           .filter(x => Boolean(x));
@@ -92,6 +95,8 @@ let argv = yargs
           }
       }
       packageJsonData.workspaces = packageJsonData.workspaces.concat(extraWorkspaceDirs);
+      packageJsonData.workspaces.nohoist = (packageJsonData.workspaces.nohoist||[]).concat(extraNoHoist);
+
       const jsonString = JSON.stringify(packageJsonData, null, '  ') + '\n';
       if (jsonString) {
         try {
@@ -106,6 +111,7 @@ let argv = yargs
       await execa("yarn install --no-lockfile", { shell: true, stdio: 'inherit' });
       exampleDirs
         .map(example => {
+          fs.ensureDirSync(path.join(rootDir, example, 'node_modules', '.bin'))
           fs.writeFileSync(path.join(rootDir, example, 'node_modules', '.bin', 'restrap'), `#!/usr/bin/env node
 'use strict';
 const execa = require('execa');

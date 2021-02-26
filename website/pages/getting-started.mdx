@@ -20,6 +20,10 @@ Then open http://localhost:3000/ to see your app. Your console should look like 
 
 **That's it**. You don't need to worry about setting up multiple webpack configs or other build tools. Just start editing `src/App.js` and go!
 
+## Razzle has many examples, we might have one that fits your needs
+
+See: [The examples](https://github.com/jaredpalmer/razzle/tree/master/examples)
+
 ## Commands
 
 Below is a list of commands you will probably find useful.
@@ -37,6 +41,12 @@ Builds the app for production to the build folder.
 
 The build is minified and the filenames include the hashes.
 Your app is ready to be deployed!
+
+By default this uses NODE_ENV=production and asks if you want to run it.
+
+If you nont want the confirmation add --noninteractive to your build command.
+
+If you want to use a different env file e.g. .env.something-staging file you can add --node-env=something-staging
 
 ### npm run start:prod
 
@@ -80,6 +90,20 @@ yarn add webpack@4.46.0 --dev
 ```
 
 Also if there are issues, try adding specific package versions to resolutions in `package.json`.
+
+## Common problems
+
+If you have issues with css this might be related to postcss being resolved wrong.
+
+To fix this add:
+
+```json
+{
+  "postcss": "8.2.4"
+}
+```
+
+To resolutions in your package.json. For npm see [here](https://stackoverflow.com/questions/52416312/npm-equivalent-of-yarn-resolutions).
 
 ## Debugging with Inspector
 

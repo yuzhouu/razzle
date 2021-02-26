@@ -18,6 +18,7 @@ module.exports = {
     mediaPrefix: 'static/media',
     staticCssInDev: false, // static css in development build (incompatible with css hot reloading)
     browserslist: undefined, // or what your apps package.json says
+    enableSourceMaps: true,
     enableReactRefresh: false,
     enableTargetBabelrc: false, // enable to use .babelrc.node and .babelrc.web
     enableBabelCache: true,
@@ -212,6 +213,23 @@ module.exports = {
   },
 };
 ```
+
+### Using scoped packages
+
+Razzle supports plugins using scoped packages.
+
+Name your plugin `@scope-name/razzle-plugin-<name>`
+
+And reference it in your `razzle.config.js` as follows
+
+```
+//./razzle.config.js
+module.exports = {
+  plugins: ['@scope-name/name'],
+};
+```
+
+Note that `razzle-plugin-` is omitted
 
 ## Customizing Babel Config
 

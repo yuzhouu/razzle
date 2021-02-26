@@ -3,7 +3,6 @@
 const autoprefixer = require('autoprefixer');
 const merge = require('deepmerge');
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
-const PostCssFlexBugFixes = require('postcss-flexbugs-fixes');
 const paths = require('razzle/config/paths');
 const postcssLoadConfig = require('postcss-load-config');
 
@@ -20,6 +19,7 @@ module.exports = {
     const isServer = opts.env.target !== 'web';
     const constantEnv = opts.env.dev ? 'dev' : 'prod';
 
+    const razzleOptions = opts.options.razzleOptions;
     const config = Object.assign({}, opts.webpackConfig);
 
     const defaultOptions = {
@@ -29,11 +29,10 @@ module.exports = {
           ident: 'postcss',
         },
         prod: {
-          sourceMap: false,
+          sourceMap: razzleOptions.enableSourceMaps,
           ident: 'postcss',
         },
         plugins: [
-          PostCssFlexBugFixes,
           [autoprefixer, {
             overrideBrowserslist: opts.options.razzleOptions.browserslist || [
               '>1%',
@@ -72,7 +71,7 @@ module.exports = {
           },
         },
         prod: {
-          sourceMap: false,
+          sourceMap: razzleOptions.enableSourceMaps,
           importLoaders: 1,
           modules: {
             auto: true,

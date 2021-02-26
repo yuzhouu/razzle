@@ -9,8 +9,7 @@ const TerserPlugin = require('terser-webpack-plugin');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 const StartServerPlugin = require('razzle-start-server-webpack-plugin');
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
-const safePostCssParser = require('postcss-safe-parser');
-const OptimizeCSSAssetsPlugin = require('optimize-css-assets-webpack-plugin');
+const CssMinimizerPlugin = require('css-minimizer-webpack-plugin');
 const getClientEnv = require('./env').getClientEnv;
 const ReactRefreshWebpackPlugin = require('@pmmmwh/react-refresh-webpack-plugin');
 const errorOverlayMiddleware = require('react-dev-utils/errorOverlayMiddleware');
@@ -79,7 +78,6 @@ module.exports = (
     const IS_SERVERLESS = /serverless/.test(razzleOptions.buildType);
     const IS_PROD = env === 'prod';
     const IS_DEV = env === 'dev';
-    process.env.NODE_ENV = IS_PROD ? 'production' : 'development';
 
     // Contains various versions of the Webpack SplitChunksPlugin used in different build types
     const splitChunksConfigs = {
@@ -115,7 +113,7 @@ module.exports = (
 
     const dotenv = getClientEnv(
       target, IS_DEV,
-      { clearConsole, host, port, shouldUseReactRefresh, forceRuntimeEnvVars: razzleOptions.forceRuntimeEnvVars },
+      { clearConsole, host, port, shouldUseReactRefresh, forceRuntimeEnvVars: razzleOptions.forceRuntimeEnvVars, webpackObject },
       paths
     );
 
@@ -182,7 +180,7 @@ module.exports = (
         } else if (process.env.INSPECT) {
           nodeArgs.push(process.env.INSPECT);
         }
-        
+
         webpackOptions.startServerOptions = {
           verbose: razzleOptions.verbose,
           name: 'server.js',
@@ -246,7 +244,7 @@ module.exports = (
             },
           },
           // @todo add flag for sourcemaps
-          sourceMap: true,
+          sourceMap: razzleOptions.enableSourceMaps,
         };
       }
     }
@@ -286,6 +284,7 @@ module.exports = (
           loader: require.resolve('./babel-loader/razzle-babel-loader'),
           options: {
             verbose: razzleOptions.verbose,
+            sourceMaps: razzleOptions.enableSourceMaps,
             isServer: IS_NODE,
             cwd: paths.appPath,
             cache: razzleOptions.enableBabelCache,
@@ -308,22 +307,21 @@ module.exports = (
 
     webpackOptions.postCssOptions = {
       ident: 'postcss',
+      sourceMap: razzleOptions.enableSourceMaps,
       plugins: [
-        require('postcss-flexbugs-fixes'),
-        [require('postcss-preset-env'), {
-          autoprefixer: {
-            overrideBrowserslist: razzleOptions.browserslist || [
-              '>1%',
-              'last 4 versions',
-              'Firefox ESR',
-              'not ie < 9',
-            ],
-            flexbox: 'no-2009',
-          },
-          stage: 3,
+        [require('autoprefixer'), {
+          overrideBrowserslist: razzleOptions.browserslist || [
+            '>1%',
+            'last 4 versions',
+            'Firefox ESR',
+            'not ie < 9',
+          ],
+          flexbox: 'no-2009',
         }],
       ],
     };
+
+    webpackOptions.nullNodeCss = false;
 
     for (const [plugin, pluginOptions] of plugins) {
       // Check if .modifyWebpackConfig is a function.
@@ -467,7 +465,7 @@ module.exports = (
       // Specify target (either 'node' or 'web')
       target: target,
       // Controversially, decide on sourcemaps.
-      devtool: IS_DEV ? 'cheap-module-source-map' : 'source-map',
+      devtool: IS_DEV ? 'cheap-module-source-map' : razzleOptions.enableSourceMaps ? 'source-map' : false,
       // We need to tell webpack how to resolve both Razzle's node_modules and
       // the users', so we use resolve and resolveLoader.
       resolve: {
@@ -535,7 +533,9 @@ module.exports = (
             ? // Style-loader does not work in Node.js without some crazy
             // magic. Luckily we just need css-loader.
             [
-              {
+              webpackOptions.nullNodeCss ? {
+                loader: require.resolve('null-loader')
+              } : {
                 loader: require.resolve('css-loader'),
                 options: {
                   importLoaders: 1,
@@ -571,6 +571,7 @@ module.exports = (
               {
                 loader: require.resolve('css-loader'),
                 options: {
+                  sourceMap: razzleOptions.enableSourceMaps,
                   importLoaders: 1,
                   modules: {
                     auto: true,
@@ -587,6 +588,15 @@ module.exports = (
         ],
       },
     };
+
+    config.plugins = [
+      // Ignore assets.json and chunks.json to avoid infinite recompile bug
+      new webpack.WatchIgnorePlugin(
+        webpackMajor === 5
+        ? { paths: webpackOptions.watchIgnorePaths }
+        : webpackOptions.watchIgnorePaths
+      ),
+    ];
 
     if (IS_NODE) {
       // We want to uphold node's __filename, and __dirname.
@@ -618,6 +628,7 @@ module.exports = (
 
       // Add some plugins...
       config.plugins = [
+        ...config.plugins,
         // We define environment variables that can be accessed globally in our
         new webpack.DefinePlugin(webpackOptions.definePluginOptions),
       ];
@@ -665,17 +676,16 @@ module.exports = (
           // Supress errors to console (we use our own logger)
           !disableStartServer &&
             new StartServerPlugin(webpackOptions.startServerOptions),
-          // Ignore assets.json and chunks.json to avoid infinite recompile bug
-          new webpack.WatchIgnorePlugin(
-            webpackMajor === 5
-              ? { paths: webpackOptions.watchIgnorePaths }
-              : webpackOptions.watchIgnorePaths
-          ),
         ].filter(x => x);
       }
     }
 
     if (IS_WEB) {
+      //
+      // config.node = {
+      //   fs: 'empty',
+      // };
+
       // Extract our CSS into files.
       const miniCssExtractPlugin = new MiniCssExtractPlugin({
         filename: webpackOptions.cssOutputFilename,
@@ -683,6 +693,7 @@ module.exports = (
       });
 
       config.plugins = [
+        ...config.plugins,
         webpackMajor === 5 && new webpack.ProvidePlugin({
           Buffer: [require.resolve('buffer'), 'Buffer'],
           process: [require.resolve('process')],
@@ -882,20 +893,30 @@ module.exports = (
           minimize: true,
           minimizer: [
             new TerserPlugin(webpackOptions.terserPluginOptions),
-            new OptimizeCSSAssetsPlugin({
-              cssProcessorOptions: {
-                parser: safePostCssParser,
-                // @todo add flag for sourcemaps
-                map: {
-                  // `inline: false` forces the sourcemap to be output into a
-                  // separate file
-                  inline: false,
-                  // `annotation: true` appends the sourceMappingURL to the end of
-                  // the css file, helping the browser find the sourcemap
-                  annotation: true,
-                },
+            new CssMinimizerPlugin({
+              sourceMap: razzleOptions.enableSourceMaps,
+              minimizerOptions: {
+                sourceMap: razzleOptions.enableSourceMaps
               },
-            }),
+              minify: async (data, inputMap, minimizerOptions) => {
+                // eslint-disable-next-line global-require
+                const CleanCSS = require('clean-css');
+
+                const [[filename, input]] = Object.entries(data);
+                const minifiedCss = await new CleanCSS({ sourceMap: minimizerOptions.sourceMap }).minify({
+                  [filename]: {
+                    styles: input,
+                    sourceMap: inputMap,
+                  },
+                });
+
+                return {
+                  css: minifiedCss.styles,
+                  map: minifiedCss.sourceMap ? minifiedCss.sourceMap.toJSON() : '',
+                  warnings: minifiedCss.warnings,
+                };
+              },
+            })
           ],
         }
       }

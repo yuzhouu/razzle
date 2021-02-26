@@ -1,7 +1,12 @@
 {
   "name": "razzle-plugin-eslint",
-  "version": "4.0.0-canary.37",
+  "version": "4.0.0-canary.50",
   "main": "index.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com:jaredpalmer/razzle.git",
+    "directory": "packages/razzle-plugin-eslint"
+  },
   "license": "MIT",
   "dependencies": {
     "@typescript-eslint/eslint-plugin": "^4.0.0",
@@ -17,7 +22,7 @@
     "eslint-webpack-plugin": "^2.1.0"
   },
   "peerDependencies": {
-    "react-dev-utils": "^11.0.1",
+    "react-dev-utils": "10.2.1",
     "webpack": "~4||~5"
   }
 }
